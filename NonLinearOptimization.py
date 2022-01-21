@@ -7,4 +7,4 @@ def equations(p):
 
 x, y =  fsolve(equations, (1, 1))
 
-print equations((x, y))
+print (x, y)
