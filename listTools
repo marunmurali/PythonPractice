@@ -1,0 +1,65 @@
+#list comprehension
+
+fruits = ["apple", "banana", "cherry", "kiwi", "mango"]
+
+newlist = [x for x in fruits if "a" in x]
+
+print(newlist)
+
+a = [5, 10, 6, 30, 6, 4, 7, 50]
+newa = [x for x in a if x%10==0]
+
+print(newa)
+#list slicing
+
+print (a[2:8:2])
+
+#perform an operation on all elements in a list/set
+# Python3 code to demonstrate 
+# operations on each list element
+# using list comprehension
+  
+# initializing list 
+test_list = ["geeks", "for", "geeks", "is", "best"]
+  
+# printing original list
+print ("The original list is : " + str(test_list))
+  
+# operations on each list element
+# using list comprehension
+# uppercasing each element
+res = [i.upper() for i in test_list]
+  
+# printing result
+print ("The uppercased list is : " + str(res))
+
+
+# Python3 code to demonstrate 
+# operations on each list element
+# using map()
+  
+# initializing list 
+test_list = ["Geeks", "foR", "gEEks", "IS", "bEST"]
+testList2 = [3, 4, 5, 7]
+  
+# printing original list
+print ("The original list is : " + str(test_list))
+print ("The original list is : " + str(testList2))
+  
+# operations on each list element
+# using map()
+# lowercasing each element
+res = list(map(str.lower, test_list))
+
+def function(t):
+    return t*2
+
+
+l2mod = map(function, testList2)
+l2mod2 = map(lambda a: a*2, testList2) 
+
+print (list(l2mod))
+print (list(l2mod2))
+
+# printing result
+print ("The lowercased list is : " + str(res))
