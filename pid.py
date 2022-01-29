@@ -1,70 +1,79 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
-import ipywidgets as wg
-from IPython.display import display
-n = 100 # time points to plot
-tf = 20.0 # final time
-SP_start = 2.0 # time of set point change
 
-def process(y,t,u):
-    Kp = 4.0
-    taup = 3.0
-    thetap = 1.0
-    if t<(thetap+SP_start):
-        dydt = 0.0  # time delay
-    else:
-        dydt = (1.0/taup) * (-y + Kp * u)
+# process model
+Kp = 3.0
+taup = 5.0
+def process(y,t,u,Kp,taup):
+    # Kp = process gain
+    # taup = process time constant
+    dydt = -y/taup + Kp/taup * u
     return dydt
 
-def pidPlot(Kc,tauI,tauD):
-    t = np.linspace(0,tf,n) # create time vector
-    P= np.zeros(n)          # initialize proportional term
-    I = np.zeros(n)         # initialize integral term
-    D = np.zeros(n)         # initialize derivative term
-    e = np.zeros(n)         # initialize error
-    OP = np.zeros(n)        # initialize controller output
-    PV = np.zeros(n)        # initialize process variable
-    SP = np.zeros(n)        # initialize setpoint
-    SP_step = int(SP_start/(tf/(n-1))+1) # setpoint start
-    SP[0:SP_step] = 0.0     # define setpoint
-    SP[SP_step:n] = 4.0     # step up
-    y0 = 0.0                # initial condition
-    # loop through all time steps
-    for i in range(1,n):
-        # simulate process for one time step
-        ts = [t[i-1],t[i]]         # time interval
-        y = odeint(process,y0,ts,args=(OP[i-1],))  # compute next step
-        y0 = y[1]                  # record new initial condition
-        # calculate new OP with PID
-        PV[i] = y[1]               # record PV
-        e[i] = SP[i] - PV[i]       # calculate error = SP - PV
-        dt = t[i] - t[i-1]         # calculate time step
-        P[i] = Kc * e[i]           # calculate proportional term
-        I[i] = I[i-1] + (Kc/tauI) * e[i] * dt  # calculate integral term
-        D[i] = -Kc * tauD * (PV[i]-PV[i-1])/dt # calculate derivative term
-        OP[i] = P[i] + I[i] + D[i] # calculate new controller output
-        
-    # plot PID response
-    plt.figure(1,figsize=(15,7))
-    plt.subplot(2,2,1)
-    plt.plot(t,SP,'k-',linewidth=2,label='Setpoint (SP)')
-    plt.plot(t,PV,'r:',linewidth=2,label='Process Variable (PV)')
-    plt.legend(loc='best')
-    plt.subplot(2,2,2)
-    plt.plot(t,P,'g.-',linewidth=2,label=r'Proportional = $K_c \; e(t)$')
-    plt.plot(t,I,'b-',linewidth=2,label=r'Integral = $\frac{K_c}{\tau_I} \int_{i=0}^{n_t} e(t) \; dt $')
-    plt.plot(t,D,'r--',linewidth=2,label=r'Derivative = $-K_c \tau_D \frac{d(PV)}{dt}$')    
-    plt.legend(loc='best')
-    plt.subplot(2,2,3)
-    plt.plot(t,e,'m--',linewidth=2,label='Error (e=SP-PV)')
-    plt.legend(loc='best')
-    plt.subplot(2,2,4)
-    plt.plot(t,OP,'b--',linewidth=2,label='Controller Output (OP)')
-    plt.legend(loc='best')
-    plt.xlabel('time')
-    
-Kc_slide = wg.FloatSlider(value=0.1,min=-0.2,max=1.0,step=0.05)
-tauI_slide = wg.FloatSlider(value=4.0,min=0.01,max=5.0,step=0.1)
-tauD_slide = wg.FloatSlider(value=0.0,min=0.0,max=1.0,step=0.1)
-wg.interact(pidPlot, Kc=Kc_slide, tauI=tauI_slide, tauD=tauD_slide)
+# specify number of steps
+ns = 300
+# define time points
+t = np.linspace(0,ns/10,ns+1)
+delta_t = t[1]-t[0]
+
+# storage for recording values
+op = np.zeros(ns+1)  # controller output
+pv = np.zeros(ns+1)  # process variable
+e = np.zeros(ns+1)   # error
+ie = np.zeros(ns+1)  # integral of the error
+dpv = np.zeros(ns+1) # derivative of the pv
+P = np.zeros(ns+1)   # proportional
+I = np.zeros(ns+1)   # integral
+D = np.zeros(ns+1)   # derivative
+sp = np.zeros(ns+1)  # set point
+sp[25:] = 10
+
+# PID (starting point)
+Kc = 1.0/Kp
+tauI = taup
+tauD = 0.0
+
+# PID (tuning)
+Kc = Kc * 2
+tauI = tauI / 2
+tauD = 1.0
+
+# Upper and Lower limits on OP
+op_hi = 10.0
+op_lo = 0.0
+
+# loop through time steps    
+for i in range(0,ns):
+    e[i] = sp[i] - pv[i]
+    if i >= 1:  # calculate starting on second cycle
+        dpv[i] = (pv[i]-pv[i-1])/delta_t
+        ie[i] = ie[i-1] + e[i] * delta_t
+    P[i] = Kc * e[i]
+    I[i] = Kc/tauI * ie[i]
+    D[i] = - Kc * tauD * dpv[i]
+    op[i] = op[0] + P[i] + I[i] + D[i]
+    if op[i] > op_hi:  # check upper limit
+        op[i] = op_hi
+        ie[i] = ie[i] - e[i] * delta_t # anti-reset windup
+    if op[i] < op_lo:  # check lower limit
+        op[i] = op_lo
+        ie[i] = ie[i] - e[i] * delta_t # anti-reset windup
+    y = odeint(process,pv[i],[0,delta_t],args=(op[i],Kp,taup))
+    pv[i+1] = y[-1]
+op[ns] = op[ns-1]
+ie[ns] = ie[ns-1]
+P[ns] = P[ns-1]
+I[ns] = I[ns-1]
+D[ns] = D[ns-1]
+
+# plot results
+plt.figure(1)
+
+plt.plot(t,sp,'k-',linewidth=2)
+plt.plot(t,pv,'b--',linewidth=3)
+plt.legend(['Set Point (SP)','Process Variable (PV)'],loc='best')
+plt.ylabel('Process')
+plt.ylim([-0.1,12])
+plt.xlabel('Time')
+plt.show()
