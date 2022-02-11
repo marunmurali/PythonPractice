@@ -32,18 +32,12 @@ delta_y,t = ctl.step(0.05*control.tf([-2, 1],[25, 10, 1]))
 y = 0.87 + delta_y
 t = t + 60
 
-print(type(y))
-print(type(t))
-
 #import test data
 # reading CSV file
 data = read_csv("/home/arun/flaptter_ws/Data/StepData/step_csv_1.csv")
 y = np.array(data['velocity'].tolist())
 t = np.array(data['time'].tolist())
 y = smooth(y,3)
-
-print(type(y))
-print(type(t))
 
 plt.plot(t,y) 
 plt.xlabel('Time [sec]')
